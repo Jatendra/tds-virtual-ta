@@ -1,0 +1,149 @@
+description: "TDS Virtual TA Evaluation"
+
+providers:
+  - id: tds-virtual-ta
+    config:
+      url: "http://localhost:8000/api/"  # Replace with your deployed API URL
+      method: POST
+      headers:
+        Content-Type: application/json
+      body: |
+        {
+          "question": "{{ question }}"{% if image %},
+          "image": "{{ image }}"{% endif %}
+        }
+      transformResponse: json
+
+# Ensure JSON schema
+defaultTest:
+  assert:
+    - type: is-json
+      value:
+        type: object
+        required: [answer, links]
+        properties:
+          answer: { type: string }
+          links:
+            type: array
+            items:
+              type: object
+              required: [url, text]
+              properties:
+                url: { type: string }
+                text: { type: string }
+    - type: javascript
+      value: |
+        // Check response time (should be under 30 seconds)
+        return latencyMs < 30000;
+
+tests:
+  - vars:
+      question: "The question asks to use gpt-3.5-turbo-0125 model but the ai-proxy provided by Anand sir only supports gpt-4o-mini. So should we just use gpt-4o-mini or use the OpenAI API for gpt3.5 turbo?"
+      link: "https://discourse.onlinedegree.iitm.ac.in/t/ga5-question-8-clarification/155939"
+    assert:
+      - type: llm-rubric
+        transform: output.answer
+        value: "Clarifies use of gpt-3.5-turbo-0125 not gpt-4o-mini"
+      - type: contains
+        transform: JSON.stringify(output.links)
+        value: "https://discourse.onlinedegree.iitm.ac.in/t/ga5-question-8-clarification/155939"
+      - type: contains
+        transform: output.answer
+        value: "gpt-3.5-turbo-0125"
+      - type: contains
+        transform: output.answer
+        value: "OpenAI API directly"
+
+  - vars:
+      question: "Should I use gpt-4o-mini which AI proxy supports, or gpt3.5 turbo?"
+    assert:
+      - type: contains
+        transform: output.answer
+        value: "gpt-3.5-turbo-0125"
+      - type: contains
+        transform: output.answer
+        value: "OpenAI API directly"
+      - type: contains
+        transform: JSON.stringify(output.links)
+        value: "https://discourse.onlinedegree.iitm.ac.in/t/ga5-question-8-clarification/155939"
+
+  - vars:
+      question: "How do I set up my Python environment for TDS?"
+    assert:
+      - type: contains
+        transform: output.answer
+        value: "Python 3.8"
+      - type: contains
+        transform: output.answer
+        value: "pip"
+      - type: javascript
+        value: |
+          const response = JSON.parse(output);
+          return response.answer && response.answer.length > 20;
+
+  - vars:
+      question: "What are the best practices for data visualization in assignments?"
+    assert:
+      - type: contains
+        transform: output.answer
+        value: "chart types"
+      - type: contains
+        transform: output.answer
+        value: "labels"
+      - type: javascript
+        value: |
+          const response = JSON.parse(output);
+          return response.links && response.links.length > 0;
+
+  - vars:
+      question: "How should I submit my assignment?"
+    assert:
+      - type: contains
+        transform: output.answer
+        value: "file formats"
+      - type: contains
+        transform: output.answer
+        value: "documentation"
+      - type: javascript
+        value: |
+          const response = JSON.parse(output);
+          return response.answer && response.links;
+
+  - vars:
+      question: "I know Docker but have not used Podman before. Should I use Docker for this course?"
+    assert:
+      - type: llm-rubric
+        transform: output.answer
+        value: "Mentions that Docker is acceptable or recommends Podman"
+      - type: javascript
+        value: |
+          const response = JSON.parse(output);
+          return response.answer && response.answer.length > 10;
+
+  - vars:
+      question: "When is the TDS Sep 2025 end-term exam?"
+    assert:
+      - type: llm-rubric
+        transform: output.answer
+        value: "Says it doesn't know or information is not available"
+      - type: javascript
+        value: |
+          const response = JSON.parse(output);
+          return response.answer && response.answer.length > 10;
+
+  - vars:
+      question: "I'm getting an error in my Python code, can you help?"
+    assert:
+      - type: javascript
+        value: |
+          const response = JSON.parse(output);
+          return response.answer && response.answer.length > 10;
+      - type: javascript
+        value: |
+          const response = JSON.parse(output);
+          return response.links && response.links.length > 0;
+
+writeLatestResults: true
+
+commandLineOptions:
+  cache: true 
