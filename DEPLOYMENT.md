@@ -20,7 +20,7 @@ Railway is the easiest deployment platform for this project.
    - Go to [railway.app](https://railway.app)
    - Sign up/Login with GitHub
    - Click "New Project" → "Deploy from GitHub repo"
-   - Select your `tds-virtual-ta` repository
+   - Select your `TDS_Project1` repository
    - Railway will automatically detect the `Procfile` and deploy
 
 3. **Environment Variables:**
