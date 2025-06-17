@@ -69,7 +69,7 @@ curl "https://your-deployed-url.com/api/" \
 1. **Clone the repository**
    ```bash
    git clone <your-repo-url>
-   cd TDS_Project1
+   cd tds-virtual-ta
    ```
 
 2. **Install dependencies**
@@ -152,7 +152,7 @@ The project includes a promptfoo configuration for automated testing:
 ## Project Structure
 
 ```
-TDS_Project1/
+tds-virtual-ta/
 ├── main.py                    # FastAPI application entry point
 ├── data_scraper.py           # TDS content and discourse scraping
 ├── question_answerer.py      # Question processing and answering logic
