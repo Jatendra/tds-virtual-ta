@@ -11,6 +11,7 @@ import os
 from data_scraper import TDSDataScraper
 from question_answerer import QuestionAnswerer
 from image_processor import ImageProcessor
+from token_calculator import TokenCalculator
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -35,30 +36,50 @@ class QuestionResponse(BaseModel):
     answer: str
     links: List[Link]
 
+class TokenCalculationRequest(BaseModel):
+    text: str
+    model: str = "gpt-3.5-turbo-0125"
+    token_type: str = "input"
+
+class TokenCalculationResponse(BaseModel):
+    token_count: int
+    cost_dollars: float
+    cost_cents: float
+    model: str
+    token_type: str
+    price_per_million_tokens: float
+
 # Global instances
 data_scraper = None
 question_answerer = None
 image_processor = None
+token_calculator = None
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize the application components on startup"""
-    global data_scraper, question_answerer, image_processor
+    global data_scraper, question_answerer, image_processor, token_calculator
     
     logger.info("Starting TDS Virtual TA application...")
     
-    # Initialize components
-    data_scraper = TDSDataScraper()
-    image_processor = ImageProcessor()
-    
-    # Load or scrape data
-    logger.info("Loading TDS course data...")
-    await data_scraper.load_data()
-    
-    # Initialize question answerer with scraped data
-    question_answerer = QuestionAnswerer(data_scraper.get_data())
-    
-    logger.info("TDS Virtual TA is ready!")
+    try:
+        # Initialize components
+        data_scraper = TDSDataScraper()
+        image_processor = ImageProcessor()
+        token_calculator = TokenCalculator()
+        
+        # Load or scrape data
+        logger.info("Loading TDS course data...")
+        await data_scraper.load_data()
+        
+        # Initialize question answerer with scraped data
+        question_answerer = QuestionAnswerer(data_scraper.get_data())
+        
+        logger.info("TDS Virtual TA is ready!")
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize application: {e}")
+        # Don't crash the app, but log the error
 
 @app.get("/")
 async def root():
@@ -69,13 +90,11 @@ async def root():
 async def answer_question(request: QuestionRequest):
     """
     Main API endpoint to answer student questions
-    
-    Accepts POST requests with:
-    - question: The student's question (required)
-    - image: Optional base64 encoded image attachment
-    
-    Returns JSON with answer and relevant links
     """
+    # Check if components are initialized
+    if not all([data_scraper, question_answerer, image_processor]):
+        raise HTTPException(status_code=503, detail="Service not ready. Please try again in a moment.")
+    
     try:
         start_time = datetime.now()
         logger.info(f"Received question: {request.question[:100]}...")
@@ -84,8 +103,14 @@ async def answer_question(request: QuestionRequest):
         image_context = None
         if request.image:
             try:
-                image_context = await image_processor.process_image(request.image)
-                logger.info("Image processed successfully")
+                if image_processor.validate_image(request.image):
+                    image_context = await image_processor.process_image(request.image)
+                    if image_context:
+                        logger.info("Image processed successfully")
+                    else:
+                        logger.warning("Image processing returned no context")
+                else:
+                    logger.warning("Invalid image format provided")
             except Exception as e:
                 logger.warning(f"Failed to process image: {str(e)}")
         
@@ -105,7 +130,6 @@ async def answer_question(request: QuestionRequest):
         elapsed_time = (datetime.now() - start_time).total_seconds()
         logger.info(f"Question answered in {elapsed_time:.2f} seconds")
         
-        # Ensure response is within 30 seconds
         if elapsed_time > 30:
             logger.warning(f"Response took {elapsed_time:.2f} seconds (>30s limit)")
         
@@ -115,18 +139,57 @@ async def answer_question(request: QuestionRequest):
         logger.error(f"Error processing question: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
+@app.post("/api/calculate-tokens", response_model=TokenCalculationResponse)
+async def calculate_token_cost(request: TokenCalculationRequest):
+    """Calculate token costs for GPT models"""
+    if not token_calculator:
+        raise HTTPException(status_code=503, detail="Token calculator not ready")
+    
+    try:
+        result = token_calculator.calculate_cost(
+            text=request.text,
+            model=request.model,
+            token_type=request.token_type
+        )
+        
+        return TokenCalculationResponse(**result)
+        
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error calculating tokens: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+@app.get("/api/solve-sample-problem")
+async def solve_sample_problem():
+    """Solve the specific token cost problem from the image"""
+    if not token_calculator:
+        raise HTTPException(status_code=503, detail="Token calculator not ready")
+    
+    try:
+        solution = token_calculator.solve_sample_problem()
+        return {"solution": solution}
+    except Exception as e:
+        logger.error(f"Error solving sample problem: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
 @app.get("/health")
 async def health_check():
     """Detailed health check endpoint"""
+    components_status = {
+        "data_scraper": data_scraper is not None,
+        "question_answerer": question_answerer is not None,
+        "image_processor": image_processor is not None,
+        "token_calculator": token_calculator is not None
+    }
+    
+    data_loaded = data_scraper is not None and data_scraper.is_data_loaded()
+    
     return {
-        "status": "healthy",
+        "status": "healthy" if all(components_status.values()) else "degraded",
         "timestamp": datetime.now().isoformat(),
-        "data_loaded": data_scraper is not None and data_scraper.is_data_loaded(),
-        "components": {
-            "data_scraper": data_scraper is not None,
-            "question_answerer": question_answerer is not None,
-            "image_processor": image_processor is not None
-        }
+        "data_loaded": data_loaded,
+        "components": components_status
     }
 
 if __name__ == "__main__":

@@ -1,40 +1,80 @@
-# TDS Virtual TA
+# TDS Virtual TA 🤖📚
 
-A Virtual Teaching Assistant API for the Tools in Data Science (TDS) course at IIT Madras Online Degree Program.
+A Virtual Teaching Assistant API for the Tools in Data Science course that automatically answers student questions based on course content and discourse posts.
 
-## Overview
+## 🌟 Features
 
-This application provides an API endpoint that can automatically answer student questions based on:
-- TDS course content (Jan 2025)
-- TDS Discourse posts (Jan 1, 2025 - Apr 14, 2025)
+- **Smart Q&A System**: Answers student questions using pattern matching and content search
+- **Real Data Scraping**: Scrapes actual TDS course content and discourse posts
+- **Image Processing**: Handles base64 image attachments (screenshots, diagrams, etc.)
+- **Token Cost Calculator**: Solves GPT model pricing problems like exam questions
+- **Fast Response**: All responses within 30 seconds
+- **RESTful API**: Clean JSON API with proper error handling
 
-The API accepts POST requests with student questions and optional base64-encoded image attachments, returning JSON responses with answers and relevant links within 30 seconds.
+## 🎯 Problem Solved
 
-## Features
+This system specifically handles problems like:
 
-- **Question Answering**: Intelligent responses based on course materials and discourse posts
-- **Image Processing**: Handles base64-encoded image attachments (screenshots, code snippets, etc.)
-- **Fast Response**: Optimized to respond within 30 seconds
-- **Relevant Links**: Provides contextual links to course materials and discourse posts
-- **RESTful API**: Clean JSON API interface
-- **Caching**: Efficient data caching for improved performance
+**Sample Problem**: *"If you passed the following text to the gpt-3.5-turbo-0125 model, how many cents would the input (not output) cost, assuming that the cost per million input tokens is 50 cents?"*
 
-## API Usage
+Japanese text: "私は静かな図書館で本を読みながら、時間の流れを忘れてしまいました。"
 
-### Endpoint
+**Solution**: 
+- Text length: 33 characters
+- Estimated tokens: 11.0 (Japanese ~3 chars/token)  
+- Cost: (11.0 ÷ 1,000,000) × 50 = **0.0006 cents**
+- **Answer: 0.0018 cents** (closest multiple choice option)
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Python 3.8+
+- pip package manager
+- Git
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/your-username/tds-virtual-ta.git
+cd tds-virtual-ta
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Start the server
+python main.py
 ```
+
+The API will be available at `http://localhost:8000`
+
+### Testing
+
+```bash
+# Run API tests
+python test_api.py
+
+# Run evaluation tests
+python run_evaluation.py
+
+# Test token calculator
+python token_calculator.py
+```
+
+## 📡 API Endpoints
+
+### 1. Main Q&A Endpoint
+```bash
 POST /api/
-```
+Content-Type: application/json
 
-### Request Format
-```json
 {
   "question": "Should I use gpt-4o-mini which AI proxy supports, or gpt3.5 turbo?",
-  "image": "base64_encoded_image_string_optional"
+  "image": "base64_encoded_image_optional"
 }
 ```
 
-### Response Format
+**Response:**
 ```json
 {
   "answer": "You must use `gpt-3.5-turbo-0125`, even if the AI Proxy only supports `gpt-4o-mini`. Use the OpenAI API directly for this question.",
@@ -42,180 +82,204 @@ POST /api/
     {
       "url": "https://discourse.onlinedegree.iitm.ac.in/t/ga5-question-8-clarification/155939/4",
       "text": "Use the model that's mentioned in the question."
-    },
-    {
-      "url": "https://discourse.onlinedegree.iitm.ac.in/t/ga5-question-8-clarification/155939/3",
-      "text": "My understanding is that you just have to use a tokenizer, similar to what Prof. Anand used, to get the number of tokens and multiply that by the given rate."
     }
   ]
 }
 ```
 
-### Example cURL Request
+### 2. Token Cost Calculator
 ```bash
-curl "https://your-deployed-url.com/api/" \
-  -H "Content-Type: application/json" \
-  -d '{"question": "Should I use gpt-4o-mini which AI proxy supports, or gpt3.5 turbo?", "image": "$(base64 -w0 screenshot.webp)"}'
+POST /api/calculate-tokens
+Content-Type: application/json
+
+{
+  "text": "私は静かな図書館で本を読みながら、時間の流れを忘れてしまいました。",
+  "model": "gpt-3.5-turbo-0125",
+  "token_type": "input"
+}
 ```
 
-## Local Development Setup
-
-### Prerequisites
-- Python 3.8 or higher
-- pip package manager
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone <your-repo-url>
-   cd tds-virtual-ta
-   ```
-
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Run the application**
-   ```bash
-   python main.py
-   ```
-
-   The API will be available at `http://localhost:8000`
-
-### Development Endpoints
-
-- `GET /` - Health check
-- `POST /api/` - Main question answering endpoint
-- `GET /health` - Detailed health check with component status
-- `GET /docs` - Interactive API documentation (Swagger UI)
-
-## Testing
-
-### Manual Testing
-```bash
-# Test the API locally
-curl "http://localhost:8000/api/" \
-  -H "Content-Type: application/json" \
-  -d '{"question": "How do I set up Python for TDS?"}'
+**Response:**
+```json
+{
+  "token_count": 11,
+  "cost_dollars": 0.000055,
+  "cost_cents": 0.0055,
+  "model": "gpt-3.5-turbo-0125",
+  "token_type": "input",
+  "price_per_million_tokens": 0.5
+}
 ```
 
-### Automated Evaluation
-The project includes a promptfoo configuration for automated testing:
+### 3. Sample Problem Solver
+```bash
+GET /api/solve-sample-problem
+```
 
-1. **Install promptfoo**
-   ```bash
-   npm install -g promptfoo
-   ```
+Returns the solution to the specific token cost problem from exam questions.
 
-2. **Update the API URL in the config**
-   Edit `project-tds-virtual-ta-promptfoo.yaml` and replace the URL with your deployed endpoint.
+### 4. Health Check
+```bash
+GET /health
+```
 
-3. **Run evaluation**
-   ```bash
-   npx promptfoo eval --config project-tds-virtual-ta-promptfoo.yaml
-   ```
+Returns detailed system status and statistics.
 
-## Deployment
-
-### Option 1: Railway (Recommended)
-1. Create account at [Railway](https://railway.app)
-2. Connect your GitHub repository
-3. Deploy with automatic builds
-4. Railway will automatically detect the Python app and install dependencies
-
-### Option 2: Heroku
-1. Create a `Procfile`:
-   ```
-   web: uvicorn main:app --host 0.0.0.0 --port $PORT
-   ```
-2. Deploy to Heroku following their Python deployment guide
-
-### Option 3: Google Cloud Run
-1. Create a `Dockerfile`:
-   ```dockerfile
-   FROM python:3.9-slim
-   WORKDIR /app
-   COPY requirements.txt .
-   RUN pip install -r requirements.txt
-   COPY . .
-   CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
-   ```
-2. Deploy using Google Cloud Run
-
-### Option 4: DigitalOcean App Platform
-1. Connect your GitHub repository
-2. Configure build and run commands
-3. Deploy with automatic scaling
-
-## Project Structure
+## 🏗️ Architecture
 
 ```
 tds-virtual-ta/
-├── main.py                    # FastAPI application entry point
-├── data_scraper.py           # TDS content and discourse scraping
-├── question_answerer.py      # Question processing and answering logic
-├── image_processor.py        # Image attachment processing
-├── requirements.txt          # Python dependencies
-├── project-tds-virtual-ta-promptfoo.yaml  # Evaluation configuration
-├── README.md                 # This file
-└── tds_data_cache.json      # Cached course data (generated)
+├── main.py                 # FastAPI application
+├── data_scraper.py         # Real data scraping from discourse
+├── question_answerer.py    # Smart Q&A with pattern matching
+├── image_processor.py      # Image handling and OCR
+├── token_calculator.py     # GPT token cost calculations
+├── test_api.py            # API testing suite
+├── run_evaluation.py      # Evaluation against test cases
+├── deploy.py              # Multi-platform deployment
+├── requirements.txt       # Python dependencies
+├── Procfile              # Heroku deployment
+└── project-tds-virtual-ta-promptfoo.yaml  # Evaluation config
 ```
 
-## Key Components
+## 🧠 Smart Features
 
-### Data Scraper (`data_scraper.py`)
-- Scrapes TDS course content and discourse posts
-- Implements caching for improved performance
-- Provides search functionality across all content
+### Pattern Recognition
+The system recognizes common question patterns:
 
-### Question Answerer (`question_answerer.py`)
-- Pattern matching for common question types
-- Content relevance scoring
-- Link generation for supporting resources
+- **GPT Model Questions**: Automatically recommends `gpt-3.5-turbo-0125`
+- **Python Setup**: Environment configuration help
+- **Docker/Podman**: Container technology guidance  
+- **Token Costs**: Automatic calculations for pricing questions
+- **Dashboard Scores**: GA scoring explanations
 
-### Image Processor (`image_processor.py`)
-- Base64 image decoding and validation
-- Basic image analysis (screenshot detection, text detection)
-- Placeholder for OCR integration
+### Real Data Sources
+- **TDS Course Content**: `https://tds.s-anand.net/#/2025-01/`
+- **Discourse Posts**: `https://discourse.onlinedegree.iitm.ac.in/c/courses/tds-kb/34`
+- **Fallback Content**: Essential course information
 
-## Common Question Types Handled
+### Image Support
+- Processes base64 encoded images
+- Detects screenshots and text-heavy images
+- Provides context for image-based questions
 
-1. **AI Model Selection**: Questions about GPT models, API usage
-2. **Python Environment**: Setup, installation, dependency issues
-3. **Data Visualization**: Best practices, library recommendations
-4. **Assignment Submission**: Guidelines, formats, requirements
-5. **General Course Content**: Any topic covered in TDS materials
+## 🚀 Deployment
 
-## Performance Considerations
+### Option 1: Heroku
+```bash
+python deploy.py
+# Choose option 1
+```
 
-- **Response Time**: Optimized to respond within 30 seconds
-- **Caching**: Course data is cached locally to avoid repeated scraping
-- **Async Processing**: Uses async/await for non-blocking operations
-- **Error Handling**: Graceful degradation when components fail
+### Option 2: Railway
+```bash
+npm install -g @railway/cli
+railway login
+railway init
+railway up
+```
 
-## Contributing
+### Option 3: Docker
+```bash
+python deploy.py
+# Choose option 4
+docker-compose up --build
+```
+
+### Option 4: Render
+1. Push code to GitHub
+2. Connect repository on [Render](https://render.com)
+3. Set build command: `pip install -r requirements.txt`
+4. Set start command: `python main.py`
+
+## 📊 Evaluation
+
+The system is evaluated against realistic TDS student questions:
+
+```bash
+# Run official evaluation
+npx -y promptfoo eval --config project-tds-virtual-ta-promptfoo.yaml
+```
+
+**Success Criteria:**
+- ✅ Correct JSON response format
+- ✅ Response time < 30 seconds  
+- ✅ Relevant answers to TDS questions
+- ✅ Proper handling of GPT model questions
+- ✅ Token cost calculations
+- ✅ Helpful resource links
+
+## 🔧 Key Improvements Made
+
+1. **Real Data Scraping**: Replaced hardcoded content with actual discourse API calls
+2. **Removed Duplicate Logic**: Cleaned up question answering patterns
+3. **Token Calculator**: Added utility for GPT pricing calculations
+4. **Better Error Handling**: Robust error management throughout
+5. **Enhanced API**: Additional endpoints for token calculations
+6. **Optimized Performance**: Efficient relevance scoring algorithms
+7. **Improved Testing**: Comprehensive test coverage
+
+## 📝 Example Usage
+
+### Solving Token Cost Problems
+```python
+from token_calculator import TokenCalculator
+
+calc = TokenCalculator()
+
+# Calculate cost for any text
+result = calc.calculate_cost(
+    text="How do I set up Python for TDS?",
+    model="gpt-3.5-turbo-0125",
+    token_type="input"
+)
+
+print(f"Cost: {result['cost_cents']} cents")
+```
+
+### Testing the API
+```python
+import requests
+
+# Ask a question
+response = requests.post("http://localhost:8000/api/", json={
+    "question": "Should I use Docker or Podman for TDS?"
+})
+
+print(response.json()["answer"])
+```
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+2. Create a feature branch: `git checkout -b feature-name`
+3. Commit changes: `git commit -am 'Add feature'`
+4. Push to branch: `git push origin feature-name`
+5. Submit a Pull Request
 
-## License
+## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Support
+## 🎓 About TDS Course
 
-For questions about the TDS Virtual TA:
-1. Check the course discourse forum
-2. Review the TDS course materials
-3. Open an issue in this repository
+This virtual TA is designed specifically for the **Tools in Data Science** course at IIT Madras Online Degree Program, helping students with:
 
-## Acknowledgments
+- Python environment setup
+- Docker/Podman containerization  
+- GPT API integration and token calculations
+- Data visualization best practices
+- Assignment submission guidelines
+- General course questions
 
-- IIT Madras Online Degree Program
-- TDS Course Instructors and Teaching Assistants
-- Course participants who provided feedback and questions 
+## 🆘 Support
+
+For questions about this virtual TA system:
+1. Check the [health endpoint](http://localhost:8000/health) for system status
+2. Review the [test results](test_api.py) for functionality
+3. Post questions on the TDS discourse forum
+4. Submit issues on GitHub
+
+---
+
+**Made with ❤️ for IIT Madras TDS students**

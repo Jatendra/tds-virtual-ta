@@ -1,0 +1,40 @@
+# Ultra-lightweight Railway deployment
+FROM python:3.11-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install only essential system dependencies
+RUN apk add --no-cache \
+    gcc \
+    musl-dev \
+    libxml2-dev \
+    libxslt-dev \
+    && rm -rf /var/cache/apk/*
+
+# Copy requirements and install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip cache purge
+
+# Copy only essential application files
+COPY main.py .
+COPY data_scraper.py .
+COPY question_answerer.py .
+COPY image_processor.py .
+COPY token_calculator.py .
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PORT=8000
+
+# Create non-root user
+RUN adduser -D -s /bin/sh appuser
+USER appuser
+
+# Expose port
+EXPOSE 8000
+
+# Run the application
+CMD ["python", "main.py"] 
