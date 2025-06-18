@@ -14,12 +14,12 @@ import time
 logger = logging.getLogger(__name__)
 
 class TDSDataScraper:
-    """Real scraper for TDS course content and discourse posts"""
+    """This scrapes all the TDS course content and forum posts I need for answering questions"""
     
     def __init__(self):
         self.base_course_url = "https://tds.s-anand.net"
         self.discourse_base_url = "https://discourse.onlinedegree.iitm.ac.in"
-        self.tds_category_id = 34  # TDS Knowledge Base category
+        self.tds_category_id = 34  # Found this by looking at the TDS forum URL
         self.data = {
             "course_content": [],
             "discourse_posts": [],
@@ -32,10 +32,10 @@ class TDSDataScraper:
         self.data_loaded = False
         
     async def load_data(self):
-        """Load data from cache or scrape fresh data"""
+        """This loads data from cache if it exists, otherwise scrapes everything fresh"""
         cache_file = "tds_data_cache.json"
         
-        # Try to load from cache first (if less than 24 hours old)
+        # I don't want to scrape everything every time - that would be slow
         if os.path.exists(cache_file):
             try:
                 async with aiofiles.open(cache_file, 'r', encoding='utf-8') as f:

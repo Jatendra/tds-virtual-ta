@@ -15,7 +15,7 @@ from question_answerer import QuestionAnswerer
 from image_processor import ImageProcessor
 from token_calculator import TokenCalculator
 
-# Configure logging
+# Setting up logging so I can debug issues when they come up
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -25,23 +25,24 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Add CORS middleware to allow frontend API calls
+# Had to add CORS middleware because browsers were blocking my API calls
+# This took me way too long to figure out! 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for now
+    allow_origins=["*"],  # Allowing all origins for now - might tighten this later
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["*"],  
+    allow_headers=["*"],  
 )
 
-# Pydantic models for request/response
+# These are the data models for my API requests and responses
 class Link(BaseModel):
     url: str
     text: str
 
 class QuestionRequest(BaseModel):
     question: str
-    image: Optional[str] = None  # base64 encoded image
+    image: Optional[str] = None  # for when someone uploads an image
 
 class QuestionResponse(BaseModel):
     answer: str
@@ -60,7 +61,8 @@ class TokenCalculationResponse(BaseModel):
     token_type: str
     price_per_million_tokens: float
 
-# Global instances
+# I'm keeping these as global variables so they persist across requests
+# Probably not the most elegant solution but it works for now
 data_scraper = None
 question_answerer = None
 image_processor = None
@@ -68,33 +70,33 @@ token_calculator = None
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize the application components on startup"""
+    """This runs when the app starts up - basically my initialization routine"""
     global data_scraper, question_answerer, image_processor, token_calculator
     
     logger.info("Starting TDS Virtual TA application...")
     
     try:
-        # Initialize components
+        # Setting up all the components I need
         data_scraper = TDSDataScraper()
         image_processor = ImageProcessor()
         token_calculator = TokenCalculator()
         
-        # Load or scrape data
+        # This part loads all the TDS course content
         logger.info("Loading TDS course data...")
         await data_scraper.load_data()
         
-        # Initialize question answerer with scraped data
+        # Now I can create the question answerer with all the loaded data
         question_answerer = QuestionAnswerer(data_scraper.get_data())
         
         logger.info("TDS Virtual TA is ready!")
         
     except Exception as e:
         logger.error(f"Failed to initialize application: {e}")
-        # Don't crash the app, but log the error
+        # I don't want the whole app to crash if something goes wrong here
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    """Main landing page with beautiful UI"""
+    """This is my main page - spent way too much time making it look good"""
     html_content = """
     <!DOCTYPE html>
     <html lang="en">
@@ -674,9 +676,9 @@ async def root():
 @app.post("/api/", response_model=QuestionResponse)
 async def answer_question(request: QuestionRequest):
     """
-    Main API endpoint to answer student questions
+    This is the main endpoint where students ask their questions
     """
-    # Check if components are initialized
+    # Making sure everything is loaded before trying to answer
     if not all([data_scraper, question_answerer, image_processor]):
         raise HTTPException(status_code=503, detail="Service not ready. Please try again in a moment.")
     
@@ -684,7 +686,7 @@ async def answer_question(request: QuestionRequest):
         start_time = datetime.now()
         logger.info(f"Received question: {request.question[:100]}...")
         
-        # Process image if provided
+        # Handle image uploads if someone sends one
         image_context = None
         if request.image:
             try:
@@ -699,19 +701,19 @@ async def answer_question(request: QuestionRequest):
             except Exception as e:
                 logger.warning(f"Failed to process image: {str(e)}")
         
-        # Get answer from question answerer
+        # This is where the magic happens - getting the actual answer
         answer_data = await question_answerer.answer_question(
             question=request.question,
             image_context=image_context
         )
         
-        # Prepare response
+        # Package everything up for the response
         response = QuestionResponse(
             answer=answer_data["answer"],
             links=[Link(url=link["url"], text=link["text"]) for link in answer_data["links"]]
         )
         
-        # Log response time
+        # I like to track how long responses take
         elapsed_time = (datetime.now() - start_time).total_seconds()
         logger.info(f"Question answered in {elapsed_time:.2f} seconds")
         

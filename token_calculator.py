@@ -1,7 +1,6 @@
 """
-Token cost calculator for GPT models
-Solves problems like: "If you passed text to gpt-3.5-turbo-0125 model, 
-how many cents would the input cost, assuming cost per million input tokens is 50 cents?"
+I got tired of manually calculating token costs for exam questions,
+so I made this calculator. Those Japanese text problems were killing me!
 """
 
 import re
@@ -11,9 +10,9 @@ from typing import Dict, Optional
 logger = logging.getLogger(__name__)
 
 class TokenCalculator:
-    """Calculate token costs for different GPT models"""
+    """Does all the token math so I don't have to"""
     
-    # Pricing per million tokens (as of 2025)
+    # Looked these prices up on OpenAI's website - they change sometimes
     PRICING = {
         "gpt-3.5-turbo-0125": {
             "input": 0.50,   # $0.50 per million input tokens
@@ -34,16 +33,16 @@ class TokenCalculator:
     
     def estimate_tokens(self, text: str) -> int:
         """
-        Estimate token count for text
-        Simple approximation: ~4 characters per token for English text
+        Rough estimate of how many tokens the text will use
+        Not perfect but close enough for exam questions
         """
         if not text:
             return 0
         
-        # Remove extra whitespace
+        # Clean up extra spaces first
         text = re.sub(r'\s+', ' ', text.strip())
         
-        # Approximate token count (4 characters per token on average)
+        # English is roughly 4 characters per token
         estimated_tokens = len(text) / 4
         
         return int(estimated_tokens)

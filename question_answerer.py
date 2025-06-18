@@ -8,14 +8,15 @@ import json
 logger = logging.getLogger(__name__)
 
 class QuestionAnswerer:
-    """Handles answering student questions based on TDS course data"""
+    """This class handles all the logic for answering student questions"""
     
     def __init__(self, data: Dict[str, Any]):
         self.data = data
         self.course_content = data.get("course_content", [])
         self.discourse_posts = data.get("discourse_posts", [])
         
-        # Common question patterns and their responses
+        # I've pre-written answers for the most common questions students ask
+        # Saves time and ensures consistent responses
         self.question_patterns = {
             r"gpt.*4o.*mini|gpt.*3\.?5.*turbo|ai.*proxy.*gpt|model.*selection": {
                 "answer": "You must use `gpt-3.5-turbo-0125`, even if the AI Proxy only supports `gpt-4o-mini`. Use the OpenAI API directly for this question. The assignment specifically requires gpt-3.5-turbo-0125 for consistency and evaluation purposes.",
