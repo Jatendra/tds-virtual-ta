@@ -518,7 +518,7 @@ async def root():
                     <input type="text" class="question-input" id="questionInput" 
                            placeholder="Ask me anything about TDS... (e.g., 'Should I use gpt-4o-mini or gpt-3.5-turbo?')">
                 </div>
-                <button class="ask-button clickable" onclick="askQuestion()">Ask Question</button>
+                <button type="button" class="ask-button clickable" onclick="askQuestion(event)">Ask Question</button>
                 
                 <div class="loading" id="loading">
                     <div class="spinner"></div>
@@ -571,7 +571,12 @@ async def root():
         </footer>
         
         <script>
-            async function askQuestion() {
+            async function askQuestion(event) {
+                // Prevent form submission if this is called from a form
+                if (event) {
+                    event.preventDefault();
+                }
+                
                 const input = document.getElementById('questionInput');
                 const loading = document.getElementById('loading');
                 const answerBox = document.getElementById('answerBox');
@@ -587,8 +592,11 @@ async def root():
                 answerBox.style.display = 'none';
                 
                 try {
-                    console.log('Making request to /api/');
-                    const response = await fetch(window.location.origin + '/api/', {
+                    const apiUrl = '/api/';
+                    console.log('Making request to:', apiUrl);
+                    console.log('Full URL:', window.location.origin + apiUrl);
+                    
+                    const response = await fetch(apiUrl, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -634,6 +642,7 @@ async def root():
             // Allow Enter key to submit
             document.getElementById('questionInput').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
+                    e.preventDefault(); // Prevent form submission
                     askQuestion();
                 }
             });
@@ -641,7 +650,10 @@ async def root():
             function showTokenCalculator() {
                 const text = prompt('Enter text to calculate tokens:');
                 if (text) {
-                    fetch(window.location.origin + '/api/calculate-tokens', {
+                    const tokenUrl = '/api/calculate-tokens';
+                    console.log('Making token request to:', tokenUrl);
+                    
+                    fetch(tokenUrl, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
