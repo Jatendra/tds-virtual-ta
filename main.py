@@ -362,7 +362,7 @@ async def root():
                 
                 try {
                     console.log('Making request to /api/');
-                    const response = await fetch('/api/', {
+                    const response = await fetch(window.location.origin + '/api/', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -415,7 +415,7 @@ async def root():
             function showTokenCalculator() {
                 const text = prompt('Enter text to calculate tokens:');
                 if (text) {
-                    fetch('/api/calculate-tokens', {
+                    fetch(window.location.origin + '/api/calculate-tokens', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
