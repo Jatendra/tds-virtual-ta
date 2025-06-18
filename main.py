@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 import base64
@@ -22,6 +23,15 @@ app = FastAPI(
     title="TDS Virtual TA",
     description="Virtual Teaching Assistant for Tools in Data Science course",
     version="1.0.0"
+)
+
+# Add CORS middleware to allow frontend API calls
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for now
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers
 )
 
 # Pydantic models for request/response
@@ -351,6 +361,7 @@ async def root():
                 answerBox.style.display = 'none';
                 
                 try {
+                    console.log('Making request to /api/');
                     const response = await fetch('/api/', {
                         method: 'POST',
                         headers: {
@@ -362,8 +373,11 @@ async def root():
                         })
                     });
                     
+                    console.log('Response status:', response.status);
+                    
                     if (response.ok) {
                         const data = await response.json();
+                        console.log('Response data:', data);
                         answerText.textContent = data.answer;
                         
                         // Display links if available
@@ -378,10 +392,13 @@ async def root():
                         
                         answerBox.style.display = 'block';
                     } else {
-                        throw new Error('Failed to get answer');
+                        const errorText = await response.text();
+                        console.error('API Error:', response.status, errorText);
+                        throw new Error(`API Error: ${response.status} - ${errorText}`);
                     }
                 } catch (error) {
-                    answerText.textContent = 'Sorry, I encountered an error. Please try again!';
+                    console.error('Fetch error:', error);
+                    answerText.textContent = `Error: ${error.message}. Please check the browser console for details.`;
                     answerBox.style.display = 'block';
                 }
                 
@@ -409,12 +426,18 @@ async def root():
                             token_type: 'input'
                         })
                     })
-                    .then(response => response.json())
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}`);
+                        }
+                        return response.json();
+                    })
                     .then(data => {
                         alert(`Tokens: ${data.token_count}\\nCost: $${data.cost_dollars.toFixed(6)} (${data.cost_cents.toFixed(4)} cents)`);
                     })
                     .catch(error => {
-                        alert('Error calculating tokens');
+                        console.error('Token calculator error:', error);
+                        alert(`Error calculating tokens: ${error.message}`);
                     });
                 }
             }
