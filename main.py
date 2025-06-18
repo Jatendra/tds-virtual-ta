@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from typing import List, Optional
 import base64
@@ -81,10 +82,347 @@ async def startup_event():
         logger.error(f"Failed to initialize application: {e}")
         # Don't crash the app, but log the error
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 async def root():
-    """Health check endpoint"""
-    return {"message": "TDS Virtual TA is running!", "timestamp": datetime.now().isoformat()}
+    """Main landing page with beautiful UI"""
+    html_content = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>TDS Virtual TA</title>
+        <style>
+            * {
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+            }
+            
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: white;
+            }
+            
+            .container {
+                max-width: 800px;
+                margin: 0 auto;
+                padding: 2rem;
+                text-align: center;
+                background: rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(10px);
+                border-radius: 15px;
+                box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+                border: 1px solid rgba(255, 255, 255, 0.18);
+            }
+            
+            h1 {
+                font-size: 3rem;
+                margin-bottom: 1rem;
+                background: linear-gradient(45deg, #FFD700, #FFA500);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+            }
+            
+            .subtitle {
+                font-size: 1.2rem;
+                margin-bottom: 2rem;
+                opacity: 0.9;
+            }
+            
+            .status {
+                background: rgba(76, 175, 80, 0.2);
+                border: 1px solid #4CAF50;
+                border-radius: 10px;
+                padding: 1rem;
+                margin: 2rem 0;
+            }
+            
+            .api-endpoints {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 1rem;
+                margin: 2rem 0;
+            }
+            
+            .endpoint-card {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+                padding: 1.5rem;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                transition: transform 0.3s ease;
+            }
+            
+            .endpoint-card:hover {
+                transform: translateY(-5px);
+                background: rgba(255, 255, 255, 0.15);
+            }
+            
+            .endpoint-title {
+                font-size: 1.1rem;
+                font-weight: bold;
+                margin-bottom: 0.5rem;
+                color: #FFD700;
+            }
+            
+            .endpoint-desc {
+                font-size: 0.9rem;
+                opacity: 0.8;
+                margin-bottom: 1rem;
+            }
+            
+            .endpoint-link {
+                display: inline-block;
+                background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+                color: white;
+                text-decoration: none;
+                padding: 0.5rem 1rem;
+                border-radius: 5px;
+                font-size: 0.8rem;
+                transition: opacity 0.3s ease;
+            }
+            
+            .endpoint-link:hover {
+                opacity: 0.8;
+            }
+            
+            .demo-section {
+                background: rgba(255, 255, 255, 0.1);
+                border-radius: 10px;
+                padding: 2rem;
+                margin: 2rem 0;
+                text-align: left;
+            }
+            
+            .demo-title {
+                font-size: 1.5rem;
+                margin-bottom: 1rem;
+                text-align: center;
+                color: #FFD700;
+            }
+            
+            .question-input {
+                width: 100%;
+                padding: 1rem;
+                border: 1px solid rgba(255, 255, 255, 0.3);
+                border-radius: 5px;
+                background: rgba(255, 255, 255, 0.1);
+                color: white;
+                font-size: 1rem;
+                margin-bottom: 1rem;
+            }
+            
+            .question-input::placeholder {
+                color: rgba(255, 255, 255, 0.7);
+            }
+            
+            .ask-button {
+                background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+                color: white;
+                border: none;
+                padding: 1rem 2rem;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 1rem;
+                transition: opacity 0.3s ease;
+            }
+            
+            .ask-button:hover {
+                opacity: 0.8;
+            }
+            
+            .answer-box {
+                margin-top: 1rem;
+                padding: 1rem;
+                background: rgba(0, 0, 0, 0.2);
+                border-radius: 5px;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                display: none;
+            }
+            
+            .loading {
+                display: none;
+                text-align: center;
+                margin: 1rem 0;
+            }
+            
+            .spinner {
+                border: 2px solid rgba(255, 255, 255, 0.3);
+                border-radius: 50%;
+                border-top: 2px solid white;
+                width: 20px;
+                height: 20px;
+                animation: spin 1s linear infinite;
+                margin: 0 auto;
+            }
+            
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            
+            .footer {
+                margin-top: 2rem;
+                opacity: 0.7;
+                font-size: 0.9rem;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>🤖 TDS Virtual TA</h1>
+            <p class="subtitle">Your AI-Powered Teaching Assistant for Tools in Data Science</p>
+            
+            <div class="status">
+                <h3>✅ Status: Online & Ready!</h3>
+                <p>Deployed successfully on Railway • Last updated: """ + datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC") + """</p>
+            </div>
+            
+            <div class="demo-section">
+                <h3 class="demo-title">💬 Try It Out!</h3>
+                <input type="text" class="question-input" id="questionInput" 
+                       placeholder="Ask me anything about TDS... (e.g., 'Should I use gpt-4o-mini or gpt-3.5-turbo?')">
+                <button class="ask-button" onclick="askQuestion()">Ask Question</button>
+                
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Thinking...</p>
+                </div>
+                
+                <div class="answer-box" id="answerBox">
+                    <h4>Answer:</h4>
+                    <p id="answerText"></p>
+                    <div id="linksSection"></div>
+                </div>
+            </div>
+            
+            <div class="api-endpoints">
+                <div class="endpoint-card">
+                    <div class="endpoint-title">📊 API Documentation</div>
+                    <div class="endpoint-desc">Interactive API docs with all endpoints</div>
+                    <a href="/docs" class="endpoint-link">View Docs</a>
+                </div>
+                
+                <div class="endpoint-card">
+                    <div class="endpoint-title">🔍 Health Check</div>
+                    <div class="endpoint-desc">Check system status and components</div>
+                    <a href="/health" class="endpoint-link">Check Health</a>
+                </div>
+                
+                <div class="endpoint-card">
+                    <div class="endpoint-title">🧮 Token Calculator</div>
+                    <div class="endpoint-desc">Calculate GPT API costs</div>
+                    <a href="/api/solve-sample-problem" class="endpoint-link">Solve Sample</a>
+                </div>
+                
+                <div class="endpoint-card">
+                    <div class="endpoint-title">💰 Cost Calculator</div>
+                    <div class="endpoint-desc">Calculate token costs for different models</div>
+                    <a href="#" onclick="showTokenCalculator()" class="endpoint-link">Calculate</a>
+                </div>
+            </div>
+            
+            <div class="footer">
+                <p>Built with FastAPI • Deployed on Railway • Optimized for 4GB containers</p>
+                <p>🚀 Ready to help with your TDS assignments and questions!</p>
+            </div>
+        </div>
+        
+        <script>
+            async function askQuestion() {
+                const input = document.getElementById('questionInput');
+                const loading = document.getElementById('loading');
+                const answerBox = document.getElementById('answerBox');
+                const answerText = document.getElementById('answerText');
+                const linksSection = document.getElementById('linksSection');
+                
+                if (!input.value.trim()) {
+                    alert('Please enter a question!');
+                    return;
+                }
+                
+                loading.style.display = 'block';
+                answerBox.style.display = 'none';
+                
+                try {
+                    const response = await fetch('/api/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            question: input.value,
+                            image: null
+                        })
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        answerText.textContent = data.answer;
+                        
+                        // Display links if available
+                        if (data.links && data.links.length > 0) {
+                            linksSection.innerHTML = '<h4>📚 Helpful Links:</h4>' + 
+                                data.links.map(link => 
+                                    `<a href="${link.url}" target="_blank" style="color: #FFD700; text-decoration: none; display: block; margin: 0.5rem 0;">🔗 ${link.text}</a>`
+                                ).join('');
+                        } else {
+                            linksSection.innerHTML = '';
+                        }
+                        
+                        answerBox.style.display = 'block';
+                    } else {
+                        throw new Error('Failed to get answer');
+                    }
+                } catch (error) {
+                    answerText.textContent = 'Sorry, I encountered an error. Please try again!';
+                    answerBox.style.display = 'block';
+                }
+                
+                loading.style.display = 'none';
+            }
+            
+            // Allow Enter key to submit
+            document.getElementById('questionInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    askQuestion();
+                }
+            });
+            
+            function showTokenCalculator() {
+                const text = prompt('Enter text to calculate tokens:');
+                if (text) {
+                    fetch('/api/calculate-tokens', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            text: text,
+                            model: 'gpt-3.5-turbo-0125',
+                            token_type: 'input'
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        alert(`Tokens: ${data.token_count}\\nCost: $${data.cost_dollars.toFixed(6)} (${data.cost_cents.toFixed(4)} cents)`);
+                    })
+                    .catch(error => {
+                        alert('Error calculating tokens');
+                    });
+                }
+            }
+        </script>
+    </body>
+    </html>
+    """
+    return html_content
 
 @app.post("/api/", response_model=QuestionResponse)
 async def answer_question(request: QuestionRequest):
