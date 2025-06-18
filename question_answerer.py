@@ -173,27 +173,33 @@ class QuestionAnswerer:
         return base_answer
     
     def _get_relevant_links(self, question: str, relevant_content: List[Dict[str, Any]]) -> List[Dict[str, str]]:
-        """Get relevant links for the question"""
+        """Get relevant links for the question with improved relevance filtering"""
         links = []
+        question_lower = question.lower()
         
-        # Add specific links for common questions first
-        if any(word in question.lower() for word in ["gpt", "model", "ai", "proxy"]):
+        # Define relevance threshold for content-based links
+        MIN_RELEVANCE_SCORE = 15
+        
+        # Add specific links for common questions first (only if highly relevant)
+        if any(word in question_lower for word in ["gpt", "model", "ai", "proxy", "turbo", "4o", "mini"]):
+            # Only add GPT-related links for GPT questions
             links.append({
                 "url": "https://discourse.onlinedegree.iitm.ac.in/t/ga5-question-8-clarification/155939/4",
                 "text": "Use the model that's mentioned in the question."
             })
-            links.append({
-                "url": "https://discourse.onlinedegree.iitm.ac.in/t/ga5-question-8-clarification/155939/3",
-                "text": "My understanding is that you just have to use a tokenizer, similar to what Prof. Anand used, to get the number of tokens and multiply that by the given rate."
-            })
+            if any(word in question_lower for word in ["token", "cost", "calculate"]):
+                links.append({
+                    "url": "https://discourse.onlinedegree.iitm.ac.in/t/ga5-question-8-clarification/155939/3",
+                    "text": "Token calculation approach for GPT models."
+                })
         
-        elif any(word in question.lower() for word in ["dashboard", "score", "bonus", "ga"]):
+        elif any(word in question_lower for word in ["dashboard", "score", "bonus"]) and "ga" in question_lower:
             links.append({
                 "url": "https://discourse.onlinedegree.iitm.ac.in/t/ga4-data-sourcing-discussion-thread-tds-jan-2025/165959/388",
                 "text": "GA4 Data Sourcing Discussion - Dashboard Scoring"
             })
         
-        elif any(word in question.lower() for word in ["docker", "podman"]):
+        elif any(word in question_lower for word in ["docker", "podman", "container"]):
             links.append({
                 "url": "https://tds.s-anand.net/#/docker",
                 "text": "Docker and Containerization Guide"
@@ -203,26 +209,70 @@ class QuestionAnswerer:
                 "text": "Docker vs Podman for TDS Course"
             })
         
-        # Add links from relevant content
-        for item in relevant_content[:3]:  # Top 3 most relevant
-            if item.get("url") and not any(link["url"] == item["url"] for link in links):
-                link_text = item.get("title", "Relevant resource")
-                if len(item.get("content", "")) > 50:
-                    link_text = item["content"][:50] + "..."
-                
-                links.append({
-                    "url": item["url"],
-                    "text": link_text
-                })
+        elif any(word in question_lower for word in ["python", "setup", "environment", "installation"]):
+            links.append({
+                "url": "https://tds.s-anand.net/#/2025-01/setup",
+                "text": "Python Environment Setup Guide"
+            })
         
-        # Ensure we have at least one link
-        if not links:
+        elif any(word in question_lower for word in ["visualization", "chart", "plot", "graph"]):
+            links.append({
+                "url": "https://tds.s-anand.net/#/2025-01/visualization",
+                "text": "Data Visualization Best Practices"
+            })
+        
+        elif any(word in question_lower for word in ["assignment", "submission", "submit"]):
+            links.append({
+                "url": "https://tds.s-anand.net/#/2025-01/assignments",
+                "text": "Assignment Submission Guidelines"
+            })
+        
+        # Only add links from relevant content if they meet relevance threshold
+        for item in relevant_content:
+            if (item.get("relevance_score", 0) >= MIN_RELEVANCE_SCORE and 
+                item.get("url") and 
+                not any(link["url"] == item["url"] for link in links)):
+                
+                # Create meaningful link text
+                link_text = item.get("title", "")
+                if not link_text and item.get("content"):
+                    # Extract first sentence or meaningful snippet
+                    content = item["content"][:100].strip()
+                    if content:
+                        link_text = content + ("..." if len(item["content"]) > 100 else "")
+                    else:
+                        continue  # Skip if no meaningful text
+                
+                # Only add if link text is relevant to the question
+                if self._is_link_relevant(question_lower, link_text, item.get("content", "")):
+                    links.append({
+                        "url": item["url"],
+                        "text": link_text
+                    })
+        
+        # If no specific links found, provide a general course link only for broad questions
+        if (not links and 
+            any(word in question_lower for word in ["tds", "course", "help", "general", "what", "how"])):
             links.append({
                 "url": "https://tds.s-anand.net/#/2025-01/",
                 "text": "TDS Course Materials"
             })
         
-        return links[:5]  # Return at most 5 links
+        return links[:3]  # Return at most 3 highly relevant links
+    
+    def _is_link_relevant(self, question: str, link_text: str, content: str) -> bool:
+        """Check if a link is truly relevant to the question"""
+        # Extract key words from question (excluding common words)
+        question_keywords = set(re.findall(r'\b\w{4,}\b', question.lower()))
+        common_words = {"should", "could", "would", "what", "which", "when", "where", "that", "this", "with", "from"}
+        question_keywords -= common_words
+        
+        # Check if link text or content contains relevant keywords
+        link_content = f"{link_text} {content}".lower()
+        
+        # At least 2 keywords should match for relevance
+        matches = sum(1 for keyword in question_keywords if keyword in link_content)
+        return matches >= 2 or len(question_keywords) <= 2
     
     def get_stats(self) -> Dict[str, Any]:
         """Get statistics about the loaded data"""
